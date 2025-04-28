@@ -2,7 +2,7 @@ import itertools
 
 import pytest
 import asyncgui as ag
-from asyncgui_ext.synctools.queue import Queue, Closed, WouldBlock
+from asyncgui_ext.queue import Queue, Closed, WouldBlock
 
 p = pytest.mark.parametrize
 p_order = p('order', ('lifo', 'fifo', 'small-first'))

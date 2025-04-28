@@ -1,12 +1,12 @@
 [tool.poetry]
-name = "asyncgui-ext-synctools"
-version = "0.2.1.dev0"
-description = "Inter-task sychronization and communication."
+name = "asyncgui-ext-queue"
+version = "0.3.0"
+description = "An asyncio.Queue equivalence for asyncgui"
 authors = ["Nattōsai Mitō <flow4re2c@gmail.com>"]
 license = "MIT"
 readme = 'README.md'
-repository = 'https://github.com/asyncgui/asyncgui-ext-synctools'
-homepage = 'https://github.com/asyncgui/asyncgui-ext-synctools'
+repository = 'https://github.com/asyncgui/asyncgui-ext-queue'
+homepage = 'https://github.com/asyncgui/asyncgui-ext-queue'
 keywords = ['async', ]
 classifiers=[
     'Development Status :: 5 - Production/Stable',
@@ -16,6 +16,7 @@ classifiers=[
     'Programming Language :: Python :: 3.10',
     'Programming Language :: Python :: 3.11',
     'Programming Language :: Python :: 3.12',
+    'Programming Language :: Python :: 3.13',
     'Topic :: Software Development :: Libraries',
     'Operating System :: OS Independent',
 ]
@@ -25,7 +26,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-asyncgui = "~0.7"
+asyncgui = ">=0.7,<0.9"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^8.0"

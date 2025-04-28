@@ -7,7 +7,7 @@ import importlib.metadata
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-project = 'asyncgui-ext-synctools'
+project = 'asyncgui-ext-queue'
 copyright = '2024, Mitō Nattōsai'
 author = 'Mitō Nattōsai'
 release = importlib.metadata.version(project)

@@ -1,69 +1,3 @@
-'''
-.. versionadded:: 0.2.1
-
-.. code::
-
-    import asyncgui as ag
-    from asyncgui_ext.synctools.queue import Queue
-
-    async def producer(q):
-        for c in "ABC":
-            await q.put(c)
-            print('produced', c)
-
-    async def consumer(q):
-        async for c in q:
-            print('consumed', c)
-
-    q = Queue(capacity=1)
-    ag.start(producer(q))
-    ag.start(consumer(q))
-
-.. code:: text
-
-    produced A
-    produced B
-    consumed A
-    produced C
-    consumed B
-    consumed C
-
-癖 -- Quirk --
------------------
-
-.. code::
-
-    async def async_fn1(q, consumed):
-        await q.put('A')
-        await q.put('B')
-        item = await q.get()
-        consumed.append(item)
-        await q.put('C')
-        item = await q.get()
-        consumed.append(item)
-
-    async def async_fn2(q, consumed):
-        item = await q.get()
-        consumed.append(item)
-
-    consumed = []
-    q = Queue(capacity=1)
-    ag.start(async_fn1(q, consumed))
-    ag.start(async_fn2(q, consumed))
-    print(consumed)
-
-.. code:: text
-
-    ['B', 'C', 'A']
-
-上記の出力を見てわかるように ``A``, ``B``, ``C`` の順でキューに入れたのに
-``consumed`` には ``B``, ``C``, ``A`` の順で入っています。
-このような事が起こるのは ``asyncgui`` が自身ではメインループを持たない故にタイマー機能を提供できない事に起因します。
-なので外部のタイマー機能を利用する事でこの問題を解消する選択肢を用意する予定なのですが、それまではこういうものだと諦めてください。
-因みに ``Kivy`` を使っているのであれば ``Kivy`` のタイマー機能を用いる事でこの問題を解決済みの ``asynckivy-ext-queue``
-というモジュールが既にあるので氣になる人はそちらをご利用ください。
-'''
-
 __all__ = (
     'QueueException', 'WouldBlock', 'Closed',
     'Queue', 'Order', 'QueueState',
@@ -91,15 +25,14 @@ class QueueState(enum.Enum):
 
     HALF_CLOSED = enum.auto()
     '''
-    Putting an item into the queue is not allowed.
+    Putting an item is not allowed.
 
     :meta hide-value:
     '''
 
     CLOSED = enum.auto()
     '''
-    Putting an item into the queue is not allowed.
-    Getting an item from the queue is not allowed.
+    Putting or getting an item is not allowed.
 
     :meta hide-value:
     '''
@@ -117,14 +50,23 @@ class Closed(QueueException):
     '''
     Occurs when:
 
-    * one tries to get an item from a queue that is in the ``CLOSED`` state.
-    * one tries to get an item from an **empty** queue that is in the ``HALF_CLOSED`` state.
-    * one tries to put an item into a queue that is in the ``CLOSED`` or ``HALF_CLOSED`` state.
+    * trying to **get** an item from a queue that is in the ``CLOSED`` state.
+    * trying to **get** an item from an **empty** queue that is in the ``HALF_CLOSED`` state.
+    * trying to **put** an item into a queue that is in the ``CLOSED`` or ``HALF_CLOSED`` state.
     '''
 
 
 Item: T.TypeAlias = T.Any
 Order = T.Literal['fifo', 'lifo', 'small-first']
+'''
+* ``'fifo'``: First In First Out
+* ``'lifo'``: Last In First Out
+* ``'small-first'``: Smallest item first
+'''
+
+
+def _do_nothing(*_unused_args, **_unused_kwargs):
+    pass
 
 
 class Queue:
@@ -142,7 +84,7 @@ class Queue:
         self._getters = deque[ExclusiveEvent]()
         self._capacity = capacity
         self._order = order
-        self._is_transferring = False
+        self._is_transferring = False  # A flag to avoid recursive calls of transfer_items.
 
     def _init_container(self, capacity, order):
         # If the capacity is 1, there is no point in reordering items.
@@ -209,7 +151,7 @@ class Queue:
 
         item = self._c_get()
         if self._putters:
-            self._transfer_items()
+            self.transfer_items()
         return item
 
     def get_nowait(self) -> Item:
@@ -226,8 +168,8 @@ class Queue:
             raise WouldBlock
 
         item = self._c_get()
-        if (not self._is_transferring) and self._putters:
-            self._transfer_items()
+        if self._putters:
+            self.transfer_items()
         return item
 
     async def put(self, item) -> T.Awaitable:
@@ -249,7 +191,7 @@ class Queue:
 
         self._c_put(item)
         if self._getters:
-            self._transfer_items()
+            self.transfer_items()
 
     def put_nowait(self, item):
         '''
@@ -263,13 +205,13 @@ class Queue:
             raise WouldBlock
 
         self._c_put(item)
-        if (not self._is_transferring) and self._getters:
-            self._transfer_items()
+        if self._getters:
+            self.transfer_items()
 
     def half_close(self):
         '''
         Partially closes the queue.
-        Putting an item into it is no longer allowed.
+        Putting an item is no longer allowed.
         '''
         if self._state is not QueueState.OPENED:
             return
@@ -286,9 +228,8 @@ class Queue:
     def close(self):
         '''
         Fully closes the queue.
-        Putting an item into it is no longer allowed.
-        Getting an item from it is no longer allowed.
-        All the items it holds will be discarded.
+        Putting or getting an item is no longer allowed,
+        All items it holds will be discarded.
         '''
         if self._state is QueueState.CLOSED:
             return
@@ -327,8 +268,9 @@ class Queue:
         except Closed:
             pass
 
-    def _transfer_items(self):
-        assert not self._is_transferring
+    def transfer_items(self, *_unused):
+        if self._is_transferring:
+            return
         self._is_transferring = True
         try:
             # LOAD_FAST
