@@ -14,14 +14,14 @@ files = [
 
 [[package]]
 name = "asyncgui"
-version = "0.8.0"
+version = "0.9.3"
 description = "A minimalistic async library that focuses on fast responsiveness"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["main"]
 files = [
-    {file = "asyncgui-0.8.0-py3-none-any.whl", hash = "sha256:69b5d9aae17283c2bbb948c8f93cd03c2bbca5c060bbbce11ceeecb0292e5c03"},
-    {file = "asyncgui-0.8.0.tar.gz", hash = "sha256:daca14460f42c04586a4f824ccb7b43c24ea6cbda5ee3852aef43db5b69fe83c"},
+    {file = "asyncgui-0.9.3-py3-none-any.whl", hash = "sha256:ed73fc00c68d7e0d804eb239f2ad9c319dce57a5d31342c19aadc18f44270103"},
+    {file = "asyncgui-0.9.3.tar.gz", hash = "sha256:46b283946a1814f600b502ee48082be9681097a72d8d011305e453d683a9064b"},
 ]
 
 [package.dependencies]
@@ -715,4 +715,4 @@ zstd = ["zstandard (>=0.18.0)"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.10"
-content-hash = "2956f3254f29ccd2d8d8ddcaff9717701a5089c7ab3b679bfe07d60acec4bb97"
+content-hash = "7d7745bae3bb7d5043353a8442c90e644edd605ce32f5fe8c4286608e544d767"

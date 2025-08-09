@@ -284,15 +284,15 @@ class Queue:
             while True:
                 while (not self.is_full) and putters:
                     putter, item = next_putter()
-                    if (cb := putter._callback) is not None:
+                    if (task := putter._waiting_task) is not None:
                         c_put(item)
-                        cb(None)
+                        task._step(None)
                 if (not getters) or self.is_empty:
                     break
                 while (not self.is_empty) and getters:
                     getter = next_getter()
-                    if (cb := getter._callback) is not None:
-                        cb(None, c_get())
+                    if (task := getter._waiting_task) is not None:
+                        task._step(None, c_get())
                 if (not putters) or self.is_full:
                     break
         finally:
