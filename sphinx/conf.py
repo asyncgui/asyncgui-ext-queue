@@ -66,3 +66,19 @@ autodoc_default_options = {
 # https://sphinx-tabs.readthedocs.io/en/latest/
 sphinx_tabs_disable_tab_closing = True
 
+
+def modify_signature(app, what: str, name: str, obj, options, signature, return_annotation: str,
+                     prefix="asyncgui_ext.queue.",
+                     len_prefix=len("asyncgui_ext.queue."),
+                     ):
+    if not name.startswith(prefix):
+        return (signature, return_annotation, )
+    name = name[len_prefix:]
+    if name == "QueueState":
+        print(f"Hide the signature of {name!r}")
+        return ('', None)
+    return (signature, return_annotation, )
+
+
+def setup(app):
+    app.connect('autodoc-process-signature', modify_signature)

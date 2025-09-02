@@ -61,7 +61,7 @@ Order = T.Literal['fifo', 'lifo', 'small-first']
 '''
 * ``'fifo'``: First In First Out
 * ``'lifo'``: Last In First Out
-* ``'small-first'``: Smallest item first
+* ``'small-first'``: Smallest One First Out
 '''
 
 
@@ -115,7 +115,7 @@ class Queue:
 
     @property
     def capacity(self) -> int | None:
-        '''Number of items allowed in the queue. None if unbounded.'''
+        '''Number of items allowed in the queue. None if unlimited.'''
         return self._capacity
 
     @property
@@ -228,8 +228,7 @@ class Queue:
     def close(self):
         '''
         Fully closes the queue.
-        Putting or getting an item is no longer allowed,
-        All items it holds will be discarded.
+        Putting or getting items are no longer allowed, and any items currently held will be discarded.
         '''
         if self._state is QueueState.CLOSED:
             return
