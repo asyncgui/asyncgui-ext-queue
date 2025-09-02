@@ -1,7 +1,7 @@
 Queue
 =====
 
-An :class:`asyncio.Queue` equivalence for asyncgui.
+An :class:`asyncio.Queue` equivalent for asyncgui.
 
 Usage
 -----
@@ -65,7 +65,7 @@ The output of the following code may surprise you.
         received.append(item)
 
     received = []
-    q = Queue(capacity=1)
+    q = Queue(capacity=1, order='fifo')
     ag.start(fn1(q, received))
     ag.start(fn2(q, received))
     print(received)
@@ -74,45 +74,18 @@ The output of the following code may surprise you.
 
     ['B', 'C', 'A']
 
-.. Why it doesn't print ``['A', 'B', 'C']`` when it clearly puts ``A``, ``B``, and ``C`` in that order?
-.. This is because :meth:`asyncgui_ext.queue.Queue.get` not only retrieves an item from the queue,
-.. but also fills the resulting vacancy with an item if there is a Task waiting to put one into the queue.
-.. Then if there is a Task waiting to get an item from the queue, it will be woken up and an item will be passed to it.
-.. And this goes forever until either of the following conditions are met:
+As you can see, even though ``fn1`` enqueues items in the order A, B, C, the ``received`` list ends up with the order B, C, A,
+which is probably not what you'd expect.
+In this particular case, you can work around the issue by increasing the queue's capacity so that ``fn1`` does not block (e.g. to 2).
+However, to avoid this behavior in all situations, you must rely on a timer to defer the execution of :meth:`~asyncgui_ext.queue.Queue.transfer_items`.
+For example, if you are using ``Kivy``, you want to do:
 
-.. 1. The queue is empty and there is no Task waiting to put an item into the queue.
-.. 2. The queue is full and there is no Task waiting to get an item from the queue.
+.. code::
 
-.. 何故 ``A``, ``B``, ``C`` の順でキューに入れているのにその順で出力されないのか？
-.. それは :meth:`asyncgui_ext.queue.Queue.get` が只キューから取り出すだけでなく取り出してできた空きを埋めもするからです。
-.. そしてそれを終えた時にもしキューから受け取る為に停まっているタスクが居ればそれを再開させもします。
-.. そういった転送処理をその必要が無くなるまでやり続け、それが終わってようやく ``await queue.get()`` が完了します。
-.. なので上のコードの進行を追うと
+    from asyncgui_ext.queue import Queue
+    from kivy.clock import Clock
 
-.. 
-    .. async def fn1(q, received):
-        .. await q.put('A')  # B
-        .. await q.put('B')  # C
-        .. item = await q.get()
-        .. received.append(item)
-        .. await q.put('C')
-        .. item = await q.get()
-        .. received.append(item)
+    q = Queue(...)
+    q.transfer_items = Clock.create_trigger(q.transfer_items)
 
-    .. async def fn2(q, received):
-        .. item = await q.get()  # E
-        .. received.append(item)
-
-    .. received = []
-    .. q = Queue(capacity=1)
-    .. ag.start(fn1(q, received))  # A
-    .. ag.start(fn2(q, received))  # D
-    .. print(received)
-
-.. 1. ``fn1`` が始まる。 (A行)
-.. 2. ``fn1`` がキューに ``A`` を入れる事でキューが満たされる。 (B行)
-.. 3. ``fn1`` がキューに ``B`` を入れようとするが空きがないので空くまで待つ。 (C行)
-.. 4. ``fn1`` の進行が停まりA行が完遂される。
-.. 5. ``fn2`` が始まる。 (D行)
-.. 6. ``fn2`` がキューから ``A`` を取り出すがそれで終わりではない。 (E行)
-.. 7. 6によりキューに空きができたため ``fn1`` を再開する。
+As for :mod:`tkinter`, refer to the example ``examples/fix_quirk_in_tkinter.py``.

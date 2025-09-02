@@ -1,6 +1,6 @@
 # Queue
 
-An `asyncio.Queue` equivalence for asyncgui.
+An `asyncio.Queue` equivalent for asyncgui.
 
 ```python
 import asyncgui as ag
