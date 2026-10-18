@@ -13,21 +13,23 @@ permissions:
   contents: read
 
 jobs:
-  noname:
+  unit-test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
+      with:
+        persist-credentials: false
     - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version: ${{ matrix.python-version }}
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        python -m pip install "pytest>=8.0,<9" "asyncgui>=0.8,<1.0"
+        python -m pip install "pytest>=9.0.3,<10" "asyncgui>=1,<2"
         python -m pip install .
     - name: Test with pytest
       run: make test
