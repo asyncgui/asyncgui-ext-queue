@@ -3,7 +3,6 @@ __all__ = (
     'Queue', 'Order', 'QueueState',
     )
 import typing as T
-import enum
 import heapq
 from functools import partial
 from collections import deque
@@ -11,31 +10,12 @@ from collections import deque
 from asyncgui import ExclusiveEvent
 
 
-class QueueState(enum.Enum):
-    '''
-    Enum class that represents the state of the Queue.
-    '''
-
-    OPENED = enum.auto()
-    '''
-    All operations are allowed. 
-
-    :meta hide-value:
-    '''
-
-    HALF_CLOSED = enum.auto()
-    '''
-    Putting an item is not allowed.
-
-    :meta hide-value:
-    '''
-
-    CLOSED = enum.auto()
-    '''
-    Putting or getting an item is not allowed.
-
-    :meta hide-value:
-    '''
+QueueState: T.TypeAlias = T.Literal["opened", "half-closed", "closed"]
+'''
+* opened ... All operations are allowed. 
+* half-closed ... Putting an item is not allowed.
+* closed ... Putting or getting an item is not allowed.
+'''
 
 
 class QueueException(Exception):
@@ -50,9 +30,9 @@ class Closed(QueueException):
     '''
     Occurs when:
 
-    * trying to **get** an item from a queue that is in the ``CLOSED`` state.
-    * trying to **get** an item from an **empty** queue that is in the ``HALF_CLOSED`` state.
-    * trying to **put** an item into a queue that is in the ``CLOSED`` or ``HALF_CLOSED`` state.
+    * Trying to **get** an item from a queue that is in the ``closed`` state.
+    * Trying to **get** an item from an **empty** queue that is in the ``half-closed`` state.
+    * Trying to **put** an item into a queue that is in the ``closed`` or ``half-closed`` state.
     '''
 
 
@@ -79,7 +59,7 @@ class Queue:
         elif (not isinstance(capacity, int)) or capacity < 1:
             raise ValueError(f"'capacity' must be either a positive integer or None. (was {capacity!r})")
         self._init_container(capacity, order)
-        self._state = QueueState.OPENED
+        self._state: QueueState = "opened"
         self._putters = deque[tuple[ExclusiveEvent, Item]]()
         self._getters = deque[ExclusiveEvent]()
         self._capacity = capacity
@@ -130,15 +110,19 @@ class Queue:
     def order(self) -> Order:
         return self._order
 
+    @property
+    def state(self) -> QueueState:
+        return self._state
+
     async def get(self) -> T.Awaitable[Item]:
         '''
         .. code-block::
 
             item = await queue.get()
         '''
-        if self._state is QueueState.CLOSED:
+        if self._state == "closed":
             raise Closed
-        if self._state is QueueState.HALF_CLOSED and self.is_empty:
+        if self._state == "half-closed" and self.is_empty:
             raise Closed
 
         if self._is_transferring or self.is_empty:
@@ -160,10 +144,10 @@ class Queue:
 
             item = queue.get_nowait()
         '''
-        if self._state is QueueState.CLOSED:
+        if self._state == "closed":
             raise Closed
         if self.is_empty:
-            if self._state is QueueState.HALF_CLOSED:
+            if self._state == "half-closed":
                 raise Closed
             raise WouldBlock
 
@@ -178,7 +162,7 @@ class Queue:
 
             await queue.put(item)
         '''
-        if self._state is not QueueState.OPENED:
+        if self._state != "opened":
             raise Closed
 
         if self._is_transferring or self.is_full:
@@ -199,7 +183,7 @@ class Queue:
 
             queue.put_nowait(item)
         '''
-        if self._state is not QueueState.OPENED:
+        if self._state != "opened":
             raise Closed
         if self.is_full:
             raise WouldBlock
@@ -213,9 +197,9 @@ class Queue:
         Partially closes the queue.
         Putting an item is no longer allowed.
         '''
-        if self._state is not QueueState.OPENED:
+        if self._state != "opened":
             return
-        self._state = QueueState.HALF_CLOSED
+        self._state = "half-closed"
 
         Closed_ = Closed
         for putter, __ in self._putters:
@@ -230,9 +214,9 @@ class Queue:
         Fully closes the queue.
         Putting or getting items are no longer allowed, and any items currently held will be discarded.
         '''
-        if self._state is QueueState.CLOSED:
+        if self._state == "closed":
             return
-        self._state = QueueState.CLOSED
+        self._state = "closed"
         self._c.clear()
 
         Closed_ = Closed
