@@ -128,7 +128,7 @@ class Queue:
         if self._is_transferring or self.is_empty:
             event = ExclusiveEvent()
             self._getters.append(event)
-            exc, item = (await event.wait())[0]
+            exc, item = await event.wait_args()
             if exc is not None:
                 raise exc
             return item
@@ -168,7 +168,7 @@ class Queue:
         if self._is_transferring or self.is_full:
             event = ExclusiveEvent()
             self._putters.append((event, item, ))
-            exc = (await event.wait())[0][0]
+            exc = await event.wait_args_0()
             if exc is not None:
                 raise exc
             return
@@ -202,11 +202,11 @@ class Queue:
         self._state = "half-closed"
 
         Closed_ = Closed
-        for putter, __ in self._putters:
+        for putter, __ in self._putters.copy():
             putter.fire(Closed_)
         if not self.is_empty:
             return
-        for getter in self._getters:
+        for getter in self._getters.copy():
             getter.fire(Closed_, None)
 
     def close(self):
@@ -220,9 +220,9 @@ class Queue:
         self._c.clear()
 
         Closed_ = Closed
-        for putter, __ in self._putters:
+        for putter, __ in self._putters.copy():
             putter.fire(Closed_)
-        for getter in self._getters:
+        for getter in self._getters.copy():
             getter.fire(Closed_, None)
 
     async def __aiter__(self):
@@ -271,12 +271,12 @@ class Queue:
                         c_put(item)
                         task._step(None)
                 if (not getters) or self.is_empty:
-                    break
+                    return
                 while (not self.is_empty) and getters:
                     getter = next_getter()
                     if (task := getter._waiting_task) is not None:
                         task._step(None, c_get())
                 if (not putters) or self.is_full:
-                    break
+                    return
         finally:
             self._is_transferring = False
